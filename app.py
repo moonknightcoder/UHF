@@ -377,11 +377,31 @@ elif "Skills vs" in page:
 
     st.markdown('<div class="section-header">Skill Score vs Automation Risk (with Trend Lines)</div>', unsafe_allow_html=True)
     samp = df.sample(min(1500,len(df)),random_state=1)
-    fig3 = px.scatter(samp,x="Skill_Score",y="Automation_Risk",color="Degree_Required",opacity=0.5,
-                      trendline="lowess",color_discrete_map={"Yes":"#7c3aed","No":"#f64f59"},
-                      labels={"Skill_Score":"Skill Score (%)","Automation_Risk":"Automation Risk (%)"})
-    fig3.update_layout(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",font_color="#cbd5e1",height=360,
-                       xaxis=dict(showgrid=True,gridcolor="#2d3748"),yaxis=dict(showgrid=True,gridcolor="#2d3748"))
+    fig3 = go.Figure()
+    color_map = {"Yes": "#7c3aed", "No": "#f64f59"}
+    for deg_val in ["Yes", "No"]:
+        sub = samp[samp["Degree_Required"] == deg_val]
+        fig3.add_trace(go.Scatter(
+            x=sub["Skill_Score"], y=sub["Automation_Risk"],
+            mode="markers", name=f"Degree: {deg_val}",
+            marker=dict(color=color_map[deg_val], opacity=0.5, size=5)
+        ))
+        # Manual trend line using numpy polyfit (no statsmodels needed)
+        z = np.polyfit(sub["Skill_Score"], sub["Automation_Risk"], 1)
+        p = np.poly1d(z)
+        x_line = np.linspace(sub["Skill_Score"].min(), sub["Skill_Score"].max(), 100)
+        fig3.add_trace(go.Scatter(
+            x=x_line, y=p(x_line),
+            mode="lines", name=f"Trend ({deg_val})",
+            line=dict(color=color_map[deg_val], width=2, dash="dash"),
+            showlegend=False
+        ))
+    fig3.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font_color="#cbd5e1", height=360,
+        xaxis=dict(showgrid=True, gridcolor="#2d3748", title="Skill Score (%)"),
+        yaxis=dict(showgrid=True, gridcolor="#2d3748", title="Automation Risk (%)")
+    )
     st.plotly_chart(fig3, use_container_width=True)
 
     corr = df["Skill_Score"].corr(df["Automation_Risk"])
